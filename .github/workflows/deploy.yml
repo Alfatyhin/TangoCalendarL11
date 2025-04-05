@@ -29,7 +29,21 @@ jobs:
             cd domains/tango-calendar.com/public_html
             git reset --hard
             git pull origin master
-            /usr/local/php/php82/bin/php /usr/local/bin/composer install --no-dev --optimize-autoloader
+            /usr/local/php/php82/bin/php /usr/local/bin/php artisan migrate --force
+            /usr/local/php/php82/bin/php /usr/local/bin/php artisan cache:clear
+            /usr/local/php/php82/bin/php /usr/local/bin/php artisan config:clear
+            /usr/local/php/php82/bin/php /usr/local/bin/php artisan queue:restart
+
+      - name: Deploy via SSH 2
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            cd domains/tangocalendar.in.ua/public_html
+            git reset --hard
+            git pull origin master
             /usr/local/php/php82/bin/php /usr/local/bin/php artisan migrate --force
             /usr/local/php/php82/bin/php /usr/local/bin/php artisan cache:clear
             /usr/local/php/php82/bin/php /usr/local/bin/php artisan config:clear
