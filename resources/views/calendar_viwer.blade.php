@@ -1,7 +1,7 @@
 <x-calendar-page>
     <x-slot name="header">
         <h1 class="font-semibold text-center text-xl text-gray-800 leading-tight">
-            Tango Calendar..
+            Tango Calendar...
         </h1>
     </x-slot>
 
