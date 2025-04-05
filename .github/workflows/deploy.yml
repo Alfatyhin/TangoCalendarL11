@@ -29,10 +29,10 @@ jobs:
             cd domains/tango-calendar.com/public_html
             git reset --hard
             git pull origin master
-            /usr/local/php/php82/bin/php /usr/local/bin/php artisan migrate --force
-            /usr/local/php/php82/bin/php /usr/local/bin/php artisan cache:clear
-            /usr/local/php/php82/bin/php /usr/local/bin/php artisan config:clear
-            /usr/local/php/php82/bin/php /usr/local/bin/php artisan queue:restart
+            /usr/local/php/php82/bin/php artisan migrate --force
+            /usr/local/php/php82/bin/php artisan cache:clear
+            /usr/local/php/php82/bin/php artisan config:clear
+            /usr/local/php/php82/bin/php artisan queue:restart
 
       - name: Deploy via SSH 2
         uses: appleboy/ssh-action@v0.1.7
@@ -44,8 +44,8 @@ jobs:
             cd domains/tangocalendar.in.ua/public_html
             git reset --hard
             git pull origin master
-            /usr/local/php/php82/bin/php /usr/local/bin/php artisan migrate --force
-            /usr/local/php/php82/bin/php /usr/local/bin/php artisan cache:clear
-            /usr/local/php/php82/bin/php /usr/local/bin/php artisan config:clear
-            /usr/local/php/php82/bin/php /usr/local/bin/php artisan queue:restart
+            /usr/local/php/php82/bin/php artisan migrate --force
+            /usr/local/php/php82/bin/php artisan cache:clear
+            /usr/local/php/php82/bin/php artisan config:clear
+            /usr/local/php/php82/bin/php artisan queue:restart
 
