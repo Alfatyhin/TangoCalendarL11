@@ -60,6 +60,10 @@ class CalendarsList extends Component
         $this->getCalendarsList();
         $this->getDates();
         $this->getFestivals();
+
+        if (config('app.name') == 'TangoCalendarUA') {
+            $this->searchSelected([42], 'select_country');
+        }
     }
 
     public function setViewMode()
