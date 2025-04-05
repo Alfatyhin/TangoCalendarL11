@@ -27,6 +27,7 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           script: |
             cd domains/tango-calendar.com/public_html
+            git reset --hard
             git pull origin master
             composer install --no-dev --optimize-autoloader
             php artisan migrate --force
