@@ -27,10 +27,6 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           script: |
             cd domains/tango-calendar.com/public_html
-              # Если репозиторий ещё не клонирован, делаем это
-            if [ ! -d ".git" ]; then
-              git@github.com:Alfatyhin/TangoCalendarL11.git .
-            fi
             git pull origin master
             composer install --no-dev --optimize-autoloader
             php artisan migrate --force
