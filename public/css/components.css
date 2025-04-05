@@ -1,0 +1,91 @@
+.min-vh-95{min-height:95vh!important}
+.min-vh-90{min-height:90vh!important}
+.min-vh-85{min-height:85vh!important}
+.min-vh-80{min-height:80vh!important}
+.h-1{height:1px!important}
+.pointer {
+    cursor: pointer;
+}
+.select_options {
+    font-size: 16px;
+    background-color: #4e73df;
+    background-image: linear-gradient(180deg, #4e73df 10%, #224abe 100%);
+    background-size: cover;
+    color: rgba(255, 255, 255, 0.96);
+    padding-left: 20px;
+    margin-left: 0;
+}
+.select_option_item {
+    border-bottom: 1px solid #ffffff;
+}
+.select-floating {
+    width: 200px;
+    position: relative;
+}
+.select-floating div {
+    position: relative;
+}
+h5 {
+    text-align: center;
+}
+.close {
+    position: absolute;
+    font-size: 40px;
+    transform: rotate(45deg);
+    color: #b80101;
+    cursor: pointer;
+    width: 10px;
+    height: 10px;
+    top: -9px;
+    right: 15px;
+    line-height: 10px;
+    padding: 0;
+}
+div.float-select {
+    position: absolute;
+}
+.float-select {
+    width: max-content;
+    min-width: 200px;
+    left: 99%;
+    top: 0;
+    background: #0201b8;
+    z-index: 100;
+    padding: 5px;
+}
+ul.list {
+    list-style-type: none;
+    padding-left: 1rem;
+}
+.float-select ul.list {
+    padding: 3px 5px;
+    background: #267ed9;
+    max-height: 400px;
+    overflow-y: auto;
+}
+.float-select ul.list li {
+    border-bottom: 1px solid #004cb3;
+    padding-right: 10px;
+}
+.float-select ul.list li.selected {
+    background: #004cb3;
+}
+.search_close{
+    font-size: 30px;
+    position: absolute;
+    right: 7px;
+    top: 4px;
+    color: #730606;
+}
+.select_option_item li {
+    border-bottom: 1px solid #ffffff;
+    font-size: 80%;
+}
+.select_option_item li .close {
+    font-size: 30px;
+    position: absolute;
+    right: 5px;
+    top: 0px;
+    color: #730606;
+}
+

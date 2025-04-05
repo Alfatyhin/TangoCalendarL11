@@ -1,0 +1,116 @@
+section {
+    display: inline-block;
+}
+
+section.sidebar_left {
+    width: 30%;
+    float: left;
+    height: 100%;
+}
+
+section.right {
+    width: 69%;
+    position: relative;
+}
+
+.event_name {
+    color: #2D2F48;
+    font-weight: 600;
+    width: 90%;
+}
+.context_calendar {
+
+}
+.event_location {
+    color: #0c11ec;
+}
+.event_dates span {
+    color: #0c11ec;
+}
+.descript_show:hover {
+    cursor: pointer;
+}
+.event_link a,
+.event_link span {
+    margin: 0 5px;
+}
+.event.active {
+    background: #d6f5f7;
+}
+.event .event_link {
+    position: absolute;
+    bottom: 5px;
+}
+.fb_event_list {
+    display: none;
+    position: relative;
+}
+.fb_event_list .event {
+    width: 30%;
+    display: inline-block;
+    padding: 3px 5px;
+    padding-bottom: 10px;
+    float: left;
+    height: 100%;
+    position: relative;
+}
+.fb_event_list .description {
+    width: 69%;
+    display: inline-block;
+    max-height: 100%;
+    white-space: initial;
+    background: #aaa;
+    color: #000;
+    margin: 3px 0;
+    overflow: scroll;
+}
+
+.description.active {
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    max-height: 400px;
+    overflow: scroll;
+}
+.fb_event_list .box {
+    height: 160px;
+    overflow-y: hidden;
+    position: relative;
+    width: 100%;
+    border: 1px solid;
+    padding-bottom: 5px;
+}
+.context_calendar:hover {
+    cursor: pointer;
+}
+.context_calendar {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    display: block;
+    height: 10px;
+    line-height: 1px;
+    color: #0c0c0c;
+    font-size: 25px;
+}
+
+.add_to_calendar_form {
+    position: absolute;
+    top: 0;
+    left: 30%;
+    width: max-content;
+    padding: 40px;
+    background: #ddd;
+    border-radius: 20px;
+    border: 1px solid;
+    box-shadow: 5px 5px 5px;
+}
+
+table {
+
+}
+th, td {
+
+}
+
