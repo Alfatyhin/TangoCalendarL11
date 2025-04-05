@@ -41,6 +41,10 @@ return [
         'redirect' => 'https://tango-calendar.it-alex.net.ua/auth/facebook/callback',
     ],
 
+    'open_ai' => [
+        'key' => env('API_KEY_OPENAI'),
+    ],
+
     'fcm' => [
         'server_key' => env('FCM_SERVER_KEY'),
     ],

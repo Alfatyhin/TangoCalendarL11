@@ -26,12 +26,12 @@ class ApiController
 
     public function __construct()
     {
-        $this->apiKeyAi = env('API_KEY_OPENAI');
+        $this->apiKeyAi = config('services.open_ai.key');
     }
 
     private static function getApiKeyAi()
     {
-        return env('API_KEY_OPENAI');
+        return config('services.open_ai.key');
     }
 
     public function getServerTimeSigneg()
