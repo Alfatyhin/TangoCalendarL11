@@ -23,9 +23,6 @@ use App\Http\Controllers\SocialController;
 Route::get('/register', function () {
     return response('', 404);
 });
-Route::get('/phpinfo', function () {
-    return phpinfo();
-});
 
 Route::get('/', function () {
     return view('calendar_viwer');
