@@ -6,6 +6,7 @@ use App\Models\Event;
 use App\Models\EventsCalendarsMap;
 use App\Models\Gcalendar;
 use App\Models\GcalendarService;
+use App\Services\CalendarDataService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Component;
@@ -61,7 +62,7 @@ class CalendarsList extends Component
         $this->getDates();
         $this->getFestivals();
 
-        if (config('app.name') == 'TangoCalendarUA') {
+        if (config('app.name') == 'TangoCalendarUA' || config('app.name') == 'TangoCalendarTest' ) {
             $this->searchSelected([42], 'select_country');
         }
     }
@@ -69,6 +70,7 @@ class CalendarsList extends Component
     public function setViewMode()
     {
         $this->view_mode = $this->view_mode == 'calendar' ? 'list' : 'calendar';
+        $this->getEvents();
     }
 
     public function previousMonth()
@@ -179,11 +181,14 @@ class CalendarsList extends Component
         if (isset($calendars_hiddens[$calendarId])) {
             unset($calendars_hiddens[$calendarId]);
         } else {
-            $calendars_hiddens[$calendarId] = $calendarId;
+            if (sizeof($calendars_hiddens) != sizeof($this->calendars_selected)) {
+                $calendars_hiddens[$calendarId] = $calendarId;
+            }
         }
 
         $this->calendars_hiddens = $calendars_hiddens;
         $this->getEvents();
+
     }
 
     public function getFestivals($date = null, $count = 0)
@@ -244,6 +249,7 @@ class CalendarsList extends Component
         $currentDate = $this->currentDate;
         $calendars_selected = $this->calendars_selected;
 
+
         if (!empty($this->calendars_hiddens)) {
             foreach ($calendars_selected as $k => $cid) {
                 if (isset($this->calendars_hiddens[$cid])) {
@@ -252,13 +258,11 @@ class CalendarsList extends Component
             }
         }
 
-        $eventsMonthMap = EventsCalendarsMap::whereIn('calendarId', $calendars_selected)
-            ->whereIn('year', [$currentDate->format('Y')])
-            ->where('month', [$currentDate->format('m')])
-            ->select('eventsDatesIds', 'calendarId')
-            ->get()
-            ->keyBy('calendarId')
-            ->toArray();
+
+        $calendarDataService = new CalendarDataService();
+        foreach ($calendars_selected as $cid) {
+            $eventsMonthMap[$cid] = $calendarDataService->getCalendarEvents(['month' => $currentDate->format('Y-m-d')], $cid);
+        }
 
         $resEvents =  [
             'dates' => [],
@@ -267,38 +271,31 @@ class CalendarsList extends Component
 
         $eventsIds = [];
         foreach ($eventsMonthMap as $id => $eventsMonth) {
-            $eventsDatesIds = json_decode($eventsMonth['eventsDatesIds'], true);
+            $eventsDatesIds = $eventsMonth['dates'];
+            $eventsIdsMonth = $eventsMonth['events'];
+
             foreach ($eventsDatesIds as $date => $data) {
                 $resEvents['dates'][$date][$id] = $data;
+
                 foreach ($data as $eventId => $v) {
+
+                    $event = $eventsMonth['events'][$eventId];
                     if (!isset($eventsIds[$eventId])) {
-                        $event = Event::where('calendarId', $id)->where('eventId', $eventId)->first();
-                        if (!$event) {
-                            $ids = explode('_', $eventId);
-                            $eventId = $ids[0];
-                            if (!isset($eventsIds[$eventId])) {
-                                $event = Event::where('calendarId', $id)->where('eventId', $eventId)->first();
+                        $eventsIds[$eventId] = $event;
+                        $eventsIds[$eventId]['description'] = $this->wrapLinksInText($event['description'] ?? '');
+                        $eventsIds[$eventId]['date_data'] = $v;
+                    }
+                    if ($v['dateStart'] != $v['dateEnd'] && $this->view_mode == 'list') {
+                        if ($v['dateStart'] != $date) {
+                            unset($resEvents['dates'][$date][$id][$eventId]);
+                            if (empty($resEvents['dates'][$date][$id])) {
+                                unset($resEvents['dates'][$date][$id]);
                             }
-                        }
-                        if ($event) {
-                            $eventsIds[$eventId] = json_decode($event->data, true);
-                            $eventsIds[$eventId]['description'] = $this->wrapLinksInText($eventsIds[$eventId]['description'] ?? '');
-                            $eventsIds[$eventId]['date_data'] = $v;
-                        }
-                    } else {
-                        if ($v['dateStart'] != $v['dateEnd'] && $this->view_mode == 'list') {
-                            if ($v['dateStart'] != $date) {
-                                unset($resEvents['dates'][$date][$id][$eventId]);
-                                if (empty($resEvents['dates'][$date][$id])) {
-                                    unset($resEvents['dates'][$date][$id]);
-                                }
-                                if (empty($resEvents['dates'][$date])) {
-                                    unset($resEvents['dates'][$date]);
-                                }
+                            if (empty($resEvents['dates'][$date])) {
+                                unset($resEvents['dates'][$date]);
                             }
                         }
                     }
-
                 }
             }
         }

@@ -11,6 +11,7 @@ use App\Models\Gcalendar;
 use App\Models\GcalendarService;
 use App\Models\MessagesSubscribes;
 use App\Models\UserToken;
+use App\Services\CalendarDataService;
 use App\Services\ClientBaseService;
 use App\Services\FirebaseFirestoreService;
 use App\Services\StructuredQuery;
@@ -24,9 +25,12 @@ class ApiController
 {
     private $apiKeyAi;
 
+    private $calendarDataService;
+
     public function __construct()
     {
         $this->apiKeyAi = config('services.open_ai.key');
+        $this->calendarDataService = new CalendarDataService();
     }
 
     private static function getApiKeyAi()
@@ -261,205 +265,8 @@ class ApiController
 
     public function getCalendarEventsV1(Request $request, $id)
     {
-
-        if ($id == 120) {
-            $id = 7;
-        }
-
-        $calendar = Gcalendar::find($id);
-
-        if ($request->get('month')) {
-            $dateStart = Carbon::parse($request->get('month'));
-        } else {
-            $dateStart = new Carbon();
-        }
-
-
-        $timeMin = $dateStart->format('Y-m') . '-01T00:00:00-00:00';
-        $timeMax = $dateStart->endOfMonth()->format('Y-m-t') . 'T23:59:00-00:00';
-
-        $gCalendarService = GcalendarService::setService();
-        $gCalendar = $gCalendarService->getCalendar($calendar->gcalendarId);
-
-        $year = $dateStart->format('Y');
-        $month = $dateStart->format('m');
-
-        $calendarApi = CalendarWebhookIds::where('calendarId', $id)->first();
-
-        if (!$calendarApi) {
-
-            $newCalendarWebhook = new CalendarWebhookIds();
-            $newCalendarWebhook->calendarId = $id;
-            $chanelId = $gCalendarService->getWebhookChanel($calendar->gcalendarId);
-            if ($chanelId) {
-                $newCalendarWebhook->chanelId = $chanelId;
-            } else {
-                $newCalendarWebhook->method = 'api';
-            }
-            $newCalendarWebhook->save();
-
-
-            $calendarApi = CalendarWebhookIds::where('calendarId', $id)->first();
-        }
-
-        $calendarApiData = $calendarApi->toArray();
-
-        $eventsMonthMap = EventsCalendarsMap::where('calendarId', $id)
-            ->where('year', $year)
-            ->where('month', $month)
-            ->first();
-
-
-
-
-        $lastUpdate = $calendarApiData['lastUpdate'];
-        $chanelId = $calendarApi->chanelId;
-        $idData = explode('-', $chanelId);
-
-        if (!isset($idData[1])) {
-            $new_chenelId = $gCalendarService->getWebhookChanel($calendar->gcalendarId, $calendarApi->chanelId);
-            $calendarApi->chanelId = $new_chenelId;
-            $calendarApi->save();
-            $resEvents = $this->updateCalendarEvents($id, $calendar->gcalendarId, $year, $month, $lastUpdate, $timeMin, $timeMax);
-            $lastUpdate = $calendarApiData['lastUpdate'];
-            $chanelId = $calendarApi->chanelId;
-            $idData = explode('-', $chanelId);
-
-            if ($request->get('test')) {
-//                dd($calendarApi->chanelId);
-            }
-        }
-
-        $expiration = $idData[1]/1 + 3600*24*6;
-
-
-        $carbonDate = Carbon::createFromTimestamp($expiration);
-        if ($request->get('test')) {
-            print_r("<p>time life chanel to - {$carbonDate->format('Y-m-d h:i:s')}</p>");
-        }
-
-        if ($expiration <= time() && !empty($lastUpdate)) {
-            $new_chenelId = $gCalendarService->getWebhookChanel($calendar->gcalendarId, $calendarApi->chanelId);
-            $calendarApi->chanelId = $new_chenelId;
-            $calendarApi->save();
-            print_r("<p>update chanel to - {$carbonDate->format('Y-m-d h:i:s')} - $calendarApi->chanelId</p>");
-            Log::channel('api_daily')->info("channel updateWebhookChanel $id [$lastUpdate] #".$calendarApi->chanelId);
-        }
-
-        if (!$eventsMonthMap
-            || ($eventsMonthMap && $eventsMonthMap->lastUpdate != $lastUpdate)
-            || $expiration <= time()
-            || $request->get('test')
-        ) {
-
-            if ($request->get('test')) {
-                print_r("<p>UPDATE</p>");
-            }
-
-            $resEvents = $this->updateCalendarEvents($id, $calendar->gcalendarId, $year, $month, $lastUpdate, $timeMin, $timeMax);
-
-        } else {
-            $eventsDatesIds = json_decode($eventsMonthMap->eventsDatesIds, true);
-            $eventsIds = [];
-            foreach ($eventsDatesIds as $date => $data) {
-                foreach ($data as $eventId => $v) {
-                    if (!isset($eventsIds[$eventId])) {
-                        $event = Event::where('calendarId', $id)->where('eventId', $eventId)->first();
-                        if (!$event) {
-                            $ids = explode('_', $eventId);
-                            $eventId = $ids[0];
-                            if (!isset($eventsIds[$eventId])) {
-                                $event = Event::where('calendarId', $id)->where('eventId', $eventId)->first();
-                            }
-                        }
-                       if ($event) {
-                           $eventsIds[$eventId] = json_decode($event->data);
-                       }
-                    }
-
-                }
-            }
-            $resEvents['dates'] = $eventsDatesIds;
-            $resEvents['events'] = $eventsIds;
-        }
-
-        if ($request->get('test')) {
-
-//            $eventsOnce = $gCalendarService->getCalendarEvent($calendar->gcalendarId, '19hqou17jhhees62f3tdq0ii38');
-//            $eventId = $gCalendarService->updateEventToCalendarOne($calendar->gcalendarId, '19hqou17jhhees62f3tdq0ii38', ['extendedProperties'], '2023-12-02');
-//            $eventsOnce = $gCalendarService->getCalendarEvent($calendar->gcalendarId, '19hqou17jhhees62f3tdq0ii38');
-
-            dd($lastUpdate, $resEvents);
-        }
+        $resEvents = $this->calendarDataService->getCalendarEvents($request->all(), $id);
         return json_encode($resEvents);
-    }
-
-    private function  updateCalendarEvents($calId, $gCalendarId, $year, $month, $lastUpdate, $timeMin, $timeMax)
-    {
-        $gCalendarService = GcalendarService::setService();
-
-        $eventsOnce = $gCalendarService->getCalendarEventsDaysDataOnce($gCalendarId, $timeMin, $timeMax);
-        foreach ($eventsOnce as $eventId => $eventOne) {
-            $event = Event::firstOrCreate([
-                'eventId' => $eventId,
-                'calendarId' => $calId
-            ]);
-
-            if ($eventOne->status != "cancelled") {
-                $event->name = $eventOne->summary;
-            }
-
-            if (isset($eventOne->description)) {
-                $eventOne->description = str_replace('<br>', '\\n', $eventOne->description);
-                $eventOne->description = strip_tags($eventOne->description);
-            }
-
-
-
-
-            $event->lastUpdate = $lastUpdate;
-            $event->data = json_encode($eventOne);
-            $event->save();
-            if ($eventOne->status == "cancelled") {
-                unset($eventsOnce[$eventId]);
-            }
-        }
-
-        $events = $gCalendarService->getCalendarEventsDaysData($gCalendarId, $timeMin, $timeMax);
-
-        $eventsIds = [];
-        foreach ($events as $date => $data) {
-            $eventsIds[$date] = [];
-            foreach ($data as $event) {
-                $eventId = $event['eventId'];
-                if (!isset($eventsOnce[$eventId])) {
-                    $eventId = str_replace('@google.com', '', $event['ICalUID']);
-                }
-
-                $eventsIds[$date][$eventId] = [
-                    'timeUse' => $event['timeUse'],
-                    'dateStart' => $event['dateStart'],
-                    'timeStart' => $event['timeStart'],
-                    'dateEnd' => $event['dateEnd'],
-                    'timeEnd' => $event['timeEnd'],
-                ];
-
-            }
-        }
-
-        $eventsMap = EventsCalendarsMap::firstOrCreate([
-            'calendarId' => $calId,
-            'year' => $year,
-            'month' => $month,
-        ]);
-        $eventsMap->lastUpdate = $lastUpdate;
-        $eventsMap->eventsDatesIds = json_encode($eventsIds);
-        $eventsMap->save();
-
-        $res['dates'] = $eventsIds;
-        $res['events'] = $eventsOnce;
-
-        return $res;
     }
 
     public function getCalendarUpdate(Request $request, $id)
