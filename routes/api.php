@@ -10,6 +10,7 @@ Route::get('/user', function (Request $request) {
 
 
 
+Route::get('v1/get_time_signed', [ApiController::class, 'getServerTimeSignegV1']);
 Route::get('/get_time_signed', [ApiController::class, 'getServerTimeSigneg']);
 
 Route::get('/get/events/{id}', [ApiController::class, 'getCalendarEvents']);

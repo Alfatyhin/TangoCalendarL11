@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ApiResponseStatus;
 use App\Models\CalendarWebhookIds;
 use App\Models\Event;
 use App\Models\EventsCalendarsMap;
@@ -42,6 +43,12 @@ class ApiController
     {
         $date = new Carbon();
         return $date->format('Y-m-d-H');
+    }
+
+    public function getServerTimeSignegV1()
+    {
+        $date = new Carbon();
+        return ApiResponseStatus::timeSigned($date->format('Y-m-d-H'));
     }
 
 
@@ -981,8 +988,6 @@ class ApiController
             print_r(json_encode($res));
 
         }
-
-
     }
 
     public function updateEvent(Request $request)
