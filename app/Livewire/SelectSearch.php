@@ -39,6 +39,7 @@ class SelectSearch extends Component
         $this->selectArrayOrigin = $this->selectArray;
         $this->option_value = $option_value;
         $this->option_name = $option_name;
+        $this->selectedValuesOld = $this->selectedValues;
     }
 
     protected $listeners = ['syncSelectedValues','syncSearchFilter']; // Слушатель событий

@@ -17,6 +17,7 @@ class CalendarsList extends Component
     public $countries;
     public $countries_list;
     public $countries_list_selected = ['All'];
+    public $countries_selected = [];
     public $type_events;
     public $cityes;
 
@@ -48,11 +49,13 @@ class CalendarsList extends Component
     public function mount()
     {
         //  получаем список календарей
-        $calendars = Gcalendar::select('gcalendarId', 'type_events', 'country', 'city' , 'id')
+        $calendars = Gcalendar::select('gcalendarId', 'type_events', 'country', 'city', 'id')
             ->get()
             ->keyBy('id');
         $this->countries = $calendars->groupBy('country')->map(fn($items) => $items->pluck('id')->toArray());
-        $this->countries_list = Gcalendar::where('country', '!=', 'All')->distinct('country')->pluck('country')->toArray();
+        $this->countries_list = Gcalendar::where('country', '!=', 'All')->distinct('country')->pluck(
+            'country'
+        )->toArray();
         $this->type_events = Gcalendar::distinct('type_events')->pluck('type_events')->toArray();
         $this->cityes = $calendars->groupBy('city')->map(fn($items) => $items->pluck('id')->toArray());
 
@@ -62,8 +65,9 @@ class CalendarsList extends Component
         $this->getDates();
         $this->getFestivals();
 
-        if (config('app.name') == 'TangoCalendarUA' || config('app.name') == 'TangoCalendarTest' ) {
+        if (config('app.name') == 'TangoCalendarUA' || config('app.name') == 'TangoCalendarTest') {
             $this->searchSelected([42], 'select_country');
+            $this->countries_selected = [42];
         }
     }
 
@@ -157,6 +161,7 @@ class CalendarsList extends Component
 
     public function selectCalendar($calendarId)
     {
+        dump($calendarId);
         if (in_array($calendarId, $this->calendars_selected)) {
             $calendars_selected = [];
             foreach ($this->calendars_selected as $item) {

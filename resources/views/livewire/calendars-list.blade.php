@@ -17,6 +17,7 @@
             <livewire:select-search
                 wire:key="select_country"
                 :selectArray="$countries_list"
+                :selectedValues="$countries_selected"
                 :option_value="'key'"
                 :option_name="'value'"
                 :search_title="'search country'"
