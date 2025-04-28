@@ -161,7 +161,6 @@ class CalendarsList extends Component
 
     public function selectCalendar($calendarId)
     {
-        dump($calendarId);
         if (in_array($calendarId, $this->calendars_selected)) {
             $calendars_selected = [];
             foreach ($this->calendars_selected as $item) {
