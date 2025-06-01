@@ -37,6 +37,8 @@ class UserController extends Controller
         $fb_events = false;
         $fb_events_count = 0;
         $user_fb_calendar = false;
+        $calendarsCollection = [];
+        $calendars = [];
 
         ////////////////////////////////////////////
         // обновление данных о событиях раз в час
@@ -48,45 +50,9 @@ class UserController extends Controller
         $setTimeEvents->modify('+1 hour');
 
 
-        $messagesLog[] = "время установки событий в сессии $TimeDataEvents";
-        $messagesLog[] = "текущее время $dateTime";
-
-        if ($setTimeEvents <= $setDate || empty($TimeDataEvents)) {
-            $messagesLog[] = 'удаляем данные о событиях из сессии';
-            $request->session()->forget('UserDataEvents');
-            $newDateTimeevents = Date('Y-m-d H:i');
-            session(['SetTimeUserDataEvents' => $newDateTimeevents]);
-            $messagesLog[] = "новое время $newDateTimeevents";
-
-        }
-        //////////////////////////////////////////////////
-        // объект приложения
-        $appCalendar = AppCalendar::setAppCalendar();
-
-        if (session()->has('calendarTypeList')) {
-            $calendarTypeList = session('calendarTypeList');
-        } else {
-            $calendarTypeList = $appCalendar->getCalendarsTypeList();
-            session(['calendarTypeList' => $calendarTypeList]);
-        }
-        /////////////////////////////////////////////////////
-        if (session()->has('calendarCollection')) {
-            $collection = session('calendarCollection');
-            if (!empty($collection)) {
-                $calendarsCollection = $appCalendar->installCalendarCollection($collection);
-            } else {
-                $calendarsCollection = $appCalendar->setCalendarCollection($calendars);
-                session(['calendarCollection' => $calendarsCollection]);
-            }
-        } else {
-            $calendarsCollection = $appCalendar->setCalendarCollection($calendars);
-            session(['calendarCollection' => $calendarsCollection]);
-        }
-        ///////////////////////////////////////////////////////////
-
-
         $user_calendars = UserCalendar::where('userId', $user_id)->get()->toArray();
 
+        dd($user_calendars);
         if ($user_calendars) {
            foreach ($user_calendars as $calendar) {
                $type_events = $calendar['type_events'];
