@@ -22,3 +22,9 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::call(new FirebaseCheckSubscribes)->everyThirtyMinutes();
+Schedule::command('calendar:webhooks-renew')
+    ->hourly()
+    ->withoutOverlapping();
+Schedule::command('calendars:sync-tango-school-info')
+    ->hourly()
+    ->withoutOverlapping();

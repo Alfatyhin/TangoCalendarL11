@@ -10,6 +10,7 @@ Route::get('/user', function (Request $request) {
 
 
 
+Route::post('v1/test_log', [ApiController::class, 'testLog']);
 Route::get('v1/get_time_signed', [ApiController::class, 'getServerTimeSignegV1']);
 Route::get('/get_time_signed', [ApiController::class, 'getServerTimeSigneg']);
 
@@ -56,7 +57,7 @@ Route::middleware(['api-signed'])->group(function () {
 
 Route::any('/get_calendar_update/{id}', [ApiController::class, 'getCalendarUpdate']);
 
-Route::any('/event_delete_test', [ApiController::class, 'deleteEventTest']);
+//Route::any('/event_delete_test', [ApiController::class, 'deleteEventTest']);
 
 Route::any('/calendar_webhook', [ApiController::class, 'calendarWebhook'])->name('calendar_webhook');
 

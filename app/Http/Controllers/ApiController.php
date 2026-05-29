@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Enums\ApiResponseStatus;
 use App\Models\CalendarWebhookIds;
-use App\Models\Event;
-use App\Models\EventsCalendarsMap;
 use App\Models\EventTranslate;
 use App\Models\FcmToken;
 use App\Models\Gcalendar;
@@ -15,7 +13,6 @@ use App\Models\UserToken;
 use App\Services\CalendarDataService;
 use App\Services\ClientBaseService;
 use App\Services\FirebaseFirestoreService;
-use App\Services\StructuredQuery;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -32,6 +29,13 @@ class ApiController
     {
         $this->apiKeyAi = config('services.open_ai.key');
         $this->calendarDataService = new CalendarDataService();
+    }
+
+    public function testLog(Request $request)
+    {
+        Log::channel('log_test')->info("test log", $request->all());
+
+        return response()->json(['provider_data' => ['status' => 'test_1']]);
     }
 
     private static function getApiKeyAi()
@@ -254,7 +258,6 @@ class ApiController
 
             $calendar = Gcalendar::find($id);
 
-
             $gCalendarService = GcalendarService::setService();
 
             $eventsOnce = $gCalendarService->getCalendarEvent($calendar->gcalendarId, $request->get('eventId'));
@@ -281,58 +284,19 @@ class ApiController
 
         $calendar = Gcalendar::where('id', $id)->first();
 
-//        if ($request->has('test')) {
-//
-//            $gCalendarService = GcalendarService::setService();
-//            $calendarData = $gCalendarService->getCalendar($calendar->gcalendarId);
-//            $event = $gCalendarService->getEventById($calendar->gcalendarId, $request['eventId']);
-//            $dateStart = Carbon::parse($event->getStart()->getDate() ?? $event->getStart()->getDateTime());
-//            $event_date_start = $dateStart->format('Y-m-d');
-//            dd($calendarData->summary, $event->getLocation(), $event->summary, $dateStart->format('Y-m-d'));
-//        }
 
         if ($calendar) {
 
             $calendarApi = CalendarWebhookIds::where('calendarId', $id)->first();
 
-            $gCalendarService = GcalendarService::setService();
+            if ($calendarApi) {
 
-            if (!$calendarApi) {
-
-                $newCalendarWebhook = new CalendarWebhookIds();
-                $newCalendarWebhook->calendarId = $id;
-                $chanelId = $gCalendarService->getWebhookChanel($calendar->gcalendarId);
-                if ($chanelId) {
-                    $newCalendarWebhook->chanelId = $chanelId;
-                } else {
-                    $newCalendarWebhook->method = 'api';
-                }
-                $newCalendarWebhook->save();
-
-
-                $calendarApi = CalendarWebhookIds::where('calendarId', $id)->first();
-            }
-
-            $chanelId = $calendarApi->chanelId;
-            $idData = explode('-', $chanelId);
-
-            if (isset($idData[1])) {
-                $expiration = $idData[1]/1 + 3600*24*6;
+                return $calendarApi->last_webhook_at->timestamp;
             } else {
-                Log::channel('api_daily')->info("channel ERROR $id - ".$chanelId);
-                $expiration = time() - 100;
+
+                return '';
             }
 
-
-            if ($expiration <= time() && !empty($lastUpdate)) {
-                $new_chenelId = $gCalendarService->getWebhookChanel($calendar->gcalendarId, $calendarApi->chanelId);
-                $calendarApi->chanelId = $new_chenelId;
-                $calendarApi->save();
-                Log::channel('api_daily')->info("channel updateWebhookChanel $id [$lastUpdate] #".$calendarApi->chanelId);
-            }
-
-
-            return $calendarApi->lastUpdate;
         } else {
 
             return '';
@@ -569,10 +533,9 @@ class ApiController
 
         if ($calendarApi) {
             Log::channel('api_daily')->info("chanelId $calendarApi->id update calId -  $calendarApi->calendarId");
-            $calendarApi->lastUpdate = time();
+            $calendarApi->last_webhook_at = now();
             $calendarApi->save();
         }
-
     }
 
 
@@ -1193,16 +1156,6 @@ class ApiController
                         $eventId = $gCalendarService->addEventToCalendar($calendar->gcalendarId, $data['event']);
                         break;
 
-                }
-
-
-                $calendarApi = CalendarWebhookIds::where('calendarId', $calendar->gcalendarId)->first();
-
-                if ($calendarApi) {
-
-                    Log::channel('api_daily')->info("updateEventV1 update - calendarApi");
-                    $calendarApi->lastUpdate = time();
-                    $calendarApi->save();
                 }
 
             } catch (\Exception $e) {

@@ -263,6 +263,7 @@ class CalendarsList extends Component
         }
 
 
+        $eventsMonthMap = [];
         $calendarDataService = new CalendarDataService();
         foreach ($calendars_selected as $cid) {
             $eventsMonthMap[$cid] = $calendarDataService->getCalendarEvents(['month' => $currentDate->format('Y-m-d')], $cid);

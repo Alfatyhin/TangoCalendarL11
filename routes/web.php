@@ -24,9 +24,11 @@ Route::get('/register', function () {
     return response('', 404);
 });
 
-Route::get('/', function () {
-    return view('calendar_viwer');
-})->name('index');
+Route::get('/{locale?}', [HomeController::class, 'main'])
+    ->name('main');
+
+Route::get('/calendar/{locale}/{year?}/{month?}', [HomeController::class, 'main'])
+    ->name('calendar.show');
 
 Route::get('/privacy-policy', [IndexController::class, 'privacyPolicy'])
     ->name('privacy-policy');

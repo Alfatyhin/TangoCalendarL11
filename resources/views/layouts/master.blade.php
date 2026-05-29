@@ -1,97 +1,66 @@
 <?php
-/** @var \app\Models\AppCalendar $AppCalendar
- */
-$verse = '1.5.2.2';
+$verse = '0.1';
 ?>
-    <!doctype html>
+    <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <!-- CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'Laravel') }} @yield('title')</title>
-
-    <!-- Scripts -->
-    <script src="{{ asset('js/jquery-3.5.1.min.js') }}" defer></script>
-    <script src="{{ asset('js/coda.js') }}?{{$verse}}" defer></script>
-    <script src="{{ asset('js/master.js') }}?{{$verse}}" defer></script>
-    <script src="{{ asset('js/fb_sdk.js') }}" defer></script>
+    <title>{{ config('app.name', 'Tango Calendar') }}</title>
 
     <!-- Fonts -->
-    <link rel="dns-prefetch" href="//fonts.gstatic.com">
-    <link href="https://fonts.googleapis.com/css?family=Nunito" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+
+    <!-- Scripts -->
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <!-- Styles -->
-    <link href="{{ asset('css/preloader.css') }}" rel="stylesheet">
-    <link href="{{ asset('css/app.css') }}?{{$verse}}" rel="stylesheet">
-    <link href="{{ asset('css/master.css') }}?{{$verse}}" rel="stylesheet">
-
-    <meta name="description" content="@yield('description')">
-    <link type="image/x-icon" rel="shortcut icon" href="img/logo.ico">
-
-    <meta property="og:locale" content="{{ str_replace('_', '-', app()->getLocale()) }}">
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="{{ config('app.name', 'Laravel') }}">
-    <meta property='og:description'   content='@yield('description')' >
-
-    <meta property='og:image'   content='/img/logo-socal.png' />
-    <meta property='og:image:secure_url'   content='/img/logo-socal.png' />
-    <meta property="og:image:width" content="270">
-
-    <meta property="og:url" content="/" >
-    <meta property="og:site_name" content="{{ config('app.name', 'Laravel') }}" >
-    <meta property="og:updated_time" content="">
-
-    @section('head')
-
-    @show
-
+    <link href="{{asset("fontawesome-free/css/all.min.css")}}" rel="stylesheet" type="text/css">
+    <link href="{{ asset('css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{asset("css/tailwind.css")}}" rel="stylesheet">
+    <link href="{{ asset('css/calendars_page.css') }}?{{$verse}}" rel="stylesheet">
+    <link href="{{ asset('css/components.css') }}?{{$verse}}" rel="stylesheet">
+    @livewireStyles
 </head>
+<body class="min-h-screen flex flex-col font-sans antialiased">
 
-<body>
-
-<header>
-    @if (Route::has('login'))
-        <div class="login">
-            @auth
-{{--                @if (!empty(Auth::user()->profile_photo_url))--}}
-{{--                    <img class="user_logo round"--}}
-{{--                         src="https://graph.facebook.com/{{ Auth::user()->fb_id }}/picture?type=normal"/>--}}
-{{--                @endif--}}
-            @else
-                {{-- Login with Facebook --}}
-
-{{--                <a class="btn facebook" href="{{ url('auth/facebook') }}">--}}
-{{--                    Enter with Facebook--}}
-{{--                </a>--}}
-
-            @endauth
+<div class="bg-gray-100">
+    <div class="row">
+        <div class="col-md-3">
+            <h5>User menu</h5>
+            <ul>
+                <li>
+                    <a >Import Calendars</a>
+                </li>
+            </ul>
         </div>
-    @endif
-</header>
-
-
-<div class="content">
-
-    @section('content')
-
-    @show
-
-
+        <div class="col">
+            <header class="bg-white shadow">
+                <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                    {{ $header ?? 'Dashboard' }}
+                </div>
+            </header>
+            <!-- Page Content -->
+            <main>
+                @yield('content')
+            </main>
+        </div>
+    </div>
 </div>
-<footer>
 
-    <span>Tango calendar v-{{$verse}}</span>
-    <div
-        class="fb-like"
-        data-share="true"
-        data-width="450"
-        data-show-faces="false">
+@stack('modals')
+
+@livewireScripts
+
+<footer class="mt-auto bg-gray-200 py-1">
+    <div class="text-center">
+        <span>Tango calendar v-{{$verse}}</span>
+        <span>&copy;<a target="_blank" href="https://it-alex.net.ua/">it-alex.net.ua</a> </span>
     </div>
 </footer>
-
 </body>
+
 </html>

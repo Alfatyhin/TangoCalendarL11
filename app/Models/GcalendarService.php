@@ -8,6 +8,7 @@ use Google_Service_Calendar;
 use Google_Service_Calendar_Channel;
 use Google_Service_Calendar_Event;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class GcalendarService
 {
@@ -16,10 +17,15 @@ class GcalendarService
     /** @var $service \Google_Service_Calendar */
     public $service;
     public $client;
+    /**
+     * @var \Illuminate\Config\Repository|\Illuminate\Foundation\Application|mixed|null
+     */
+    private mixed $webhook_url;
 
     private function __construct()
     {
         self::getService();
+        $this->webhook_url = config('calendar.webhook_url');
     }
 
     static function setService()
@@ -47,16 +53,18 @@ class GcalendarService
         return $calendar;
     }
 
-    public function getCalendarEvents($gcalendarId, $timeMin, $timeMax, $count = false)
+    public function getCalendarEvents($gcalendarId, $timeMin, $timeMax = null, $count = false)
     {
         $data = [
             'timeMin'      => $timeMin,
-            'timeMax'      => $timeMax,
             'orderBy'      => 'startTime',
             'singleEvents' => true,
         ];
         if ($count) {
             $data['maxResults'] = $count;
+        }
+        if ($timeMax) {
+            $data['timeMax'] = $timeMax;
         }
 
         $events = $this->service->events->listEvents($gcalendarId, $data);
@@ -369,69 +377,45 @@ class GcalendarService
     public function getWebhookChanel($calendarId)
     {
         // Настройка параметров вебхука
-        $url = url('api/calendar_webhook');
-        $webhookUrl = $url; // Замените на вашу точку входа
         $channel = new Google_Service_Calendar_Channel();
-        $chanelId = 'channel-'.time();
+        $chanelId = "channel-".Str::uuid();
         $channel->setId($chanelId); // Уникальный идентификатор вебхука
         $channel->setType('web_hook');
-        $channel->setAddress($webhookUrl);
-
-//        $this->service->events->stop('primary', 'channel-id-to-stop'); // Если уже существует активная подписка, отключите ее
+        $channel->setAddress($this->webhook_url);
 
         try {
             $res = $this->service->events->watch($calendarId, $channel);
-//            $data = $res->toSimpleObject();
-//            Log::channel('api_daily')->info("channel data #$chanelId - " . json_encode($data));
-            return $chanelId;
+            $data = json_decode(json_encode($res->toSimpleObject()), true);
+            return $data;
         } catch (\Exception $exception) {
            return false;
         }
     }
 
-    public function updateWebhookChanel($calendarId, $chanelId)
+    public function stopWebhookChanel($channelId, $subscriptionId)
     {
-        // Настройка параметров вебхука
-        $url = url('api/calendar_webhook');
-        $webhookUrl = $url; // Замените на вашу точку входа
         $channel = new Google_Service_Calendar_Channel();
-        $channel->setId($chanelId); // Уникальный идентификатор вебхука
-        $channel->setType('web_hook');
-        $channel->setAddress($webhookUrl);
-
-//        $this->service->events->stop('primary', 'channel-id-to-stop'); // Если уже существует активная подписка, отключите ее
+        $channel->setId($channelId);
+        $channel->setResourceId($subscriptionId);
 
         try {
-            $res = $this->service->events->watch($calendarId, $channel);
-//            $data = $res->toSimpleObject();
-//            Log::channel('api_daily')->info("channel data #$chanelId - " . json_encode($data));
-            return $chanelId;
+            $res = $this->service->channels->stop($channel);
+            return $res;
         } catch (\Exception $exception) {
-           return false;
+            return false;
         }
     }
 
-    public function stopWebhookChanel($subscriptionId )
-    {
-        $channel = new Google_Service_Calendar_Channel();
-        $channel->setId($subscriptionId);
-        $url = url('api/calendar_webhook');
-        $webhookUrl = $url;
-        $channel->setType('web_hook');
-        $channel->setAddress($webhookUrl);
-        $channel->setResourceId('FVFxYWsBkZ0vfQZ2nQSfPj1WK08');
-
-        $res = $this->service->channels->stop($channel);
-
-        return $res;
-    }
-
-    public function getCalendarEventsDaysData($gcalendarId, $timeMin, $timeMax, $count = false)
+    public function getCalendarEventsDaysData($gcalendarId, $timeMin, $timeMax = null, $count = false)
     {
 
         $events = $this->getCalendarEvents($gcalendarId, $timeMin, $timeMax, $count);
 
-        $date_max = Carbon::parse($timeMax);
+        if ($timeMax) {
+            $date_max = Carbon::parse($timeMax);
+        } else {
+            $date_max = false;
+        }
         $date_min = Carbon::parse($timeMin);
 
         $listEvents = [];
@@ -507,8 +491,10 @@ class GcalendarService
                 $dateEvent = $date_start->format("Y-m-d");
                 $dateTest = $date_start->format("Ymd") / 1;
 
-                if ($dateTest >= $date_min->format("Ymd") / 1
+                if ($dateTest >= $date_min->format("Ymd") / 1 && $date_max
                     && $dateTest <= $date_max->format("Ymd") / 1) {
+                    $listEvents[$dateEvent][] = $eventData;
+                } else {
                     $listEvents[$dateEvent][] = $eventData;
                 }
 
@@ -521,6 +507,98 @@ class GcalendarService
 
         return $listEvents;
 
+    }
+public function getCalendarEventsSingleData($gcalendarId, $timeMin, $timeMax = null, $count = false)
+    {
+
+        $events = $this->getCalendarEvents($gcalendarId, $timeMin, $timeMax, $count);
+
+        $listEvents = [];
+
+        foreach ($events->getItems() as $event)
+        {
+
+            /** @var $event \Google_Service_Calendar_Event */
+
+            $dateStartObj = $event->getStart();
+            if ($dateStartObj->dateTime) {
+                $dateStart = $dateStartObj->getDateTime();
+            } else {
+                $dateStart = $dateStartObj->getDate();
+            }
+            $date_start  = Carbon::parse($dateStart);
+            $dateStart   = $date_start->format('Y-m-d');
+
+            $listEvents[$dateStart][] = $this->getEventData($event);
+
+        }
+
+        return $listEvents;
+    }
+
+    private function getEventData($event)
+    {
+        /** @var $event \Google_Service_Calendar_Event */
+
+        $dateStartObj = $event->getStart();
+        if ($dateStartObj->dateTime) {
+            $dateStart = $dateStartObj->getDateTime();
+        } else {
+            $dateStart = $dateStartObj->getDate();
+        }
+        $date_start  = Carbon::parse($dateStart);
+        $dateStart   = $date_start->format('Y-m-d');
+        $timeStart   = $date_start->format('H:i');
+
+
+        $dateEndtObj = $event->getEnd();
+        if ($dateEndtObj->dateTime) {
+            $dateEnd = $dateEndtObj->getDateTime();
+        } else {
+            $dateEnd = $dateEndtObj->getDate();
+        }
+        $date_end    = Carbon::parse($dateEnd);
+        if (!$dateEndtObj->dateTime) {
+            $date_end->addMinute(-1);
+            $time_use = 0;
+        } else {
+            $time_use = 1;
+        }
+        $dateEnd     = $date_end->format('Y-m-d');
+        $timeEnd     = $date_end->format('H:i');
+
+        $lastModifed = $event->getUpdated();
+        $date        = Carbon::parse($lastModifed);
+        $dateMod     = $date->format('Y-m-d H:i');
+
+
+        $eventData = [
+            'eventId' => $event->getId(),
+            'name' => $event->getSummary(),
+            'description' => $event->getDescription(),
+            'location' => $event->getLocation(),
+            'timeUse' => $time_use,
+            'dateStart' => $dateStart,
+            'timeStart' => $timeStart,
+            'dateEnd' => $dateEnd,
+            'timeEnd' => $timeEnd,
+            'update' => $dateMod,
+            'creatorEmail' => $event->getCreator()->getEmail(),
+            'creatorName' => $event->getCreator()->getDisplayName(),
+            'organizerEmail' => $event->getOrganizer()->getEmail(),
+            'organizerName' => $event->getOrganizer()->getDisplayName()
+        ];
+
+        if ($event->getSource() && $event->getSource()->getUrl()) {
+            $eventData['url'] = $event->getSource()->getUrl();
+        } else {
+            $eventData['url'] = '';
+        }
+        $eventData['ICalUID'] = $event->getICalUID();
+        $eventData['recurringEventId'] = $event->getRecurringEventId();
+        $eventData['recurrence'] = $event->getRecurrence();
+
+        return $eventData;
     }
 
     public function getCalendarEventsDaysDataOnce($gcalendarId, $timeMin, $timeMax, $count = false)

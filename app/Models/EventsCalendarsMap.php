@@ -9,5 +9,5 @@ class EventsCalendarsMap extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['calendarId', 'year', 'month'];
+    protected $fillable = ['calendarId', 'year', 'month', 'events_count'];
 }

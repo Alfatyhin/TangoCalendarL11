@@ -151,14 +151,13 @@ return [
             'permission' => 0644
         ],
 
-        'almabet_postback' => [
+        'log_test' => [
             'driver' => 'daily',
-            'path' => storage_path('logs/almabet-postback.log'),
+            'path' => storage_path('logs/log_test.log'),
             'level' => env('LOG_LEVEL', 'info'),
-            'days' => 30,
-            'permission' => 0775
+            'days' => 7,
+            'permission' => 0644
         ],
-
 
     ],
 

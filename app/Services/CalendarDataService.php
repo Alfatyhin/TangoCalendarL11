@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\ProcessCalendarEvents;
 use App\Models\CalendarWebhookIds;
 use App\Models\Event;
 use App\Models\EventsCalendarsMap;
@@ -10,8 +11,7 @@ use App\Models\Gcalendar;
 use App\Models\GcalendarService;
 use App\Models\MessagesSubscribes;
 use App\Models\UserToken;
-use Carbon\Carbon;
-use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class CalendarDataService
@@ -22,7 +22,62 @@ class CalendarDataService
             $calendar_id = 7;
         }
 
+        if (isset($data['month'])) {
+            $dateStart = Carbon::parse($data['month']);
+        } else {
+            $dateStart = new Carbon();
+        }
+
+        ProcessCalendarEvents::dispatch($dateStart, $calendar_id);
+
+        $year = $dateStart->format('Y');
+        $month = $dateStart->format('m');
+
+
+        return $this->getDbEventsData($calendar_id, $year, $month);
+    }
+    public function getCalendarEventsNew($data, $calendar_id)
+    {
+        if ($calendar_id == 120) {
+            $calendar_id = 7;
+        }
+
         $calendar = Gcalendar::find($calendar_id);
+
+        if ($calendar) {
+            if (isset($data['month'])) {
+                $dateStart = Carbon::parse($data['month']);
+            } else {
+                $dateStart = new Carbon();
+            }
+
+            $calendarApi = $this->getCalendarWebhookDate($calendar);
+
+            $actual_time = $calendarApi->last_webhook_at;
+
+            $year = $dateStart->format('Y');
+            $month = $dateStart->format('m');
+
+            $eventsMonthMap = EventsCalendarsMap::where('calendarId', $calendar_id)
+                ->where('year', $year)
+                ->where('month', $month)
+                ->first();
+
+            if (!$eventsMonthMap || $eventsMonthMap->updated_at < $actual_time) {
+                $timeMin = $dateStart->copy()->startOfMonth()->format('Y-m-d\T00:00:00P');
+                $timeMax = $dateStart->copy()->endOfMonth()->format('Y-m-d\T23:59:00P');
+
+                $this->updateCalendarEventsDb($calendar_id, $calendar->gcalendarId, $year, $month, $actual_time->timestamp, $timeMin, $timeMax);
+            }
+        }
+
+        return $this;
+    }
+    public function getCalendarEventsDb($data, $calendar_id)
+    {
+        if ($calendar_id == 120) {
+            $calendar_id = 7;
+        }
 
         if (isset($data['month'])) {
             $dateStart = Carbon::parse($data['month']);
@@ -30,89 +85,24 @@ class CalendarDataService
             $dateStart = new Carbon();
         }
 
-
-        $timeMin = $dateStart->format('Y-m') . '-01T00:00:00-00:00';
-        $timeMax = $dateStart->endOfMonth()->format('Y-m-t') . 'T23:59:00-00:00';
-
-        $gCalendarService = GcalendarService::setService();
+//        $this->getCalendarEventsNew($data, $calendar_id);
+        ProcessCalendarEvents::dispatch($dateStart, $calendar_id);
 
         $year = $dateStart->format('Y');
         $month = $dateStart->format('m');
 
-        $calendarApi = CalendarWebhookIds::where('calendarId', $calendar_id)->first();
+        return $this->getDbEventsData($calendar_id, $year, $month);
+    }
 
-        if (!$calendarApi) {
-
-            $newCalendarWebhook = new CalendarWebhookIds();
-            $newCalendarWebhook->calendarId = $calendar_id;
-            $chanelId = $gCalendarService->getWebhookChanel($calendar->gcalendarId);
-            if ($chanelId) {
-                $newCalendarWebhook->chanelId = $chanelId;
-            } else {
-                $newCalendarWebhook->method = 'api';
-            }
-            $newCalendarWebhook->save();
-
-
-            $calendarApi = CalendarWebhookIds::where('calendarId', $calendar_id)->first();
-        }
-
-        $calendarApiData = $calendarApi->toArray();
+    private function getDbEventsData($calendar_id, $year, $month)
+    {
 
         $eventsMonthMap = EventsCalendarsMap::where('calendarId', $calendar_id)
             ->where('year', $year)
             ->where('month', $month)
             ->first();
 
-        $lastUpdate = $calendarApiData['lastUpdate'];
-        $chanelId = $calendarApi->chanelId;
-        $idData = explode('-', $chanelId);
-
-        if (!isset($idData[1])) {
-            $new_chenelId = $gCalendarService->getWebhookChanel($calendar->gcalendarId, $calendarApi->chanelId);
-            $calendarApi->chanelId = $new_chenelId;
-            $calendarApi->save();
-            $resEvents = $this->updateCalendarEvents($calendar_id, $calendar->gcalendarId, $year, $month, $lastUpdate, $timeMin, $timeMax);
-            $lastUpdate = $calendarApiData['lastUpdate'];
-            $chanelId = $calendarApi->chanelId;
-            $idData = explode('-', $chanelId);
-
-            if ($data['test']) {
-//                dd($calendarApi->chanelId);
-            }
-        }
-
-        $expiration = $idData[1]/1 + 3600*24*6;
-
-
-        $carbonDate = Carbon::createFromTimestamp($expiration);
-        if (isset($data['test'])) {
-            print_r("<p>time life chanel to - {$carbonDate->format('Y-m-d h:i:s')}</p>");
-        }
-
-        if ($expiration <= time() && !empty($lastUpdate)) {
-            $new_chenelId = $gCalendarService->getWebhookChanel($calendar->gcalendarId, $calendarApi->chanelId);
-            $calendarApi->chanelId = $new_chenelId;
-            $calendarApi->save();
-            print_r("<p>update chanel to - {$carbonDate->format('Y-m-d h:i:s')} - $calendarApi->chanelId</p>");
-            Log::channel('api_daily')->info("channel updateWebhookChanel $calendar_id [$lastUpdate] #".$calendarApi->chanelId);
-        }
-
-        $source = '';
-        if (!$eventsMonthMap
-            || ($eventsMonthMap && $eventsMonthMap->lastUpdate != $lastUpdate)
-            || $expiration <= time()
-            || isset($data['test'])
-        ) {
-
-            $source = 'updated';
-            if (isset($data['test'])) {
-                print_r("<p>UPDATE</p>");
-            }
-
-            $resEvents = $this->updateCalendarEvents($calendar_id, $calendar->gcalendarId, $year, $month, $lastUpdate, $timeMin, $timeMax);
-
-        } else {
+        if ($eventsMonthMap) {
             $source = 'db';
             $eventsDatesIds = json_decode($eventsMonthMap->eventsDatesIds, true);
             $eventsIds = [];
@@ -128,7 +118,9 @@ class CalendarDataService
                             }
                         }
                         if ($event) {
-                            $eventsIds[$eventId] = json_decode($event->data, true);
+                            $event_data = json_decode($event->data, true);
+                            $event_data['calendar_id'] = $calendar_id;
+                            $eventsIds[$eventId] = $event_data;
                         }
                     }
 
@@ -136,13 +128,83 @@ class CalendarDataService
             }
             $resEvents['dates'] = $eventsDatesIds;
             $resEvents['events'] = $eventsIds;
+            $resEvents['events_count'] = $eventsMonthMap->events_count;
             $resEvents['source'] = $source;
+            $resEvents['last_update'] = $eventsMonthMap->updated_at->format('Y-m-d H:i:m');
+
+        } else {
+            $resEvents = [];
         }
 
         return $resEvents;
     }
 
     private function  updateCalendarEvents($calId, $gCalendarId, $year, $month, $lastUpdate, $timeMin, $timeMax)
+    {
+        $gCalendarService = GcalendarService::setService();
+
+        $eventsOnce = $gCalendarService->getCalendarEventsDaysDataOnce($gCalendarId, $timeMin, $timeMax);
+        foreach ($eventsOnce as $eventId => $eventOne) {
+            $event = Event::firstOrCreate([
+                'eventId' => $eventId,
+                'calendarId' => $calId
+            ]);
+
+            if ($eventOne->status != "cancelled") {
+                $event->name = $eventOne->summary;
+            }
+
+            if (isset($eventOne->description)) {
+                $eventOne->description = str_replace('<br>', '\\n', $eventOne->description);
+                $eventOne->description = strip_tags($eventOne->description);
+            }
+
+            $event->lastUpdate = $lastUpdate;
+            $event->data = json_encode($eventOne);
+            $event->save();
+            if ($eventOne->status == "cancelled") {
+                unset($eventsOnce[$eventId]);
+            }
+        }
+
+        $events = $gCalendarService->getCalendarEventsDaysData($gCalendarId, $timeMin, $timeMax);
+
+        $eventsIds = [];
+        foreach ($events as $date => $data) {
+            $eventsIds[$date] = [];
+            foreach ($data as $event) {
+                $eventId = $event['eventId'];
+                if (!isset($eventsOnce[$eventId])) {
+                    $eventId = str_replace('@google.com', '', $event['ICalUID']);
+                }
+
+                $eventsIds[$date][$eventId] = [
+                    'timeUse' => $event['timeUse'],
+                    'dateStart' => $event['dateStart'],
+                    'timeStart' => $event['timeStart'],
+                    'dateEnd' => $event['dateEnd'],
+                    'timeEnd' => $event['timeEnd'],
+                ];
+
+            }
+        }
+
+        $eventsMap = EventsCalendarsMap::firstOrCreate([
+            'calendarId' => $calId,
+            'year' => $year,
+            'month' => $month,
+        ]);
+        $eventsMap->lastUpdate = $lastUpdate;
+        $eventsMap->eventsDatesIds = json_encode($eventsIds);
+        $eventsMap->save();
+
+        $res['dates'] = $eventsIds;
+        $res['events'] = $eventsOnce;
+
+        return $res;
+    }
+
+    private function  updateCalendarEventsDb($calId, $gCalendarId, $year, $month, $lastUpdate, $timeMin, $timeMax)
     {
         $gCalendarService = GcalendarService::setService();
 
@@ -200,14 +262,12 @@ class CalendarDataService
             'year' => $year,
             'month' => $month,
         ]);
+        $eventsMap->events_count =  sizeof($eventsOnce);
         $eventsMap->lastUpdate = $lastUpdate;
         $eventsMap->eventsDatesIds = json_encode($eventsIds);
         $eventsMap->save();
 
-        $res['dates'] = $eventsIds;
-        $res['events'] = $eventsOnce;
-
-        return $res;
+        return $this;
     }
 
     public function addEvent($data)
@@ -400,5 +460,34 @@ class CalendarDataService
         Log::channel('api_daily')->info("eventsSubscribeMessage - Results", $result);
 
         return $result;
+    }
+
+    public function getCalendarWebhookDate($calendar): CalendarWebhookIds
+    {
+        $gCalendarService = GcalendarService::setService();
+        $calendarApi = CalendarWebhookIds::where('calendarId', $calendar->id)->first();
+
+
+        if (!$calendarApi) {
+            $calendarApi = new CalendarWebhookIds();
+            $calendarApi->calendarId = $calendar->id;
+            $calendarApi->save();
+        }
+
+        if (empty($calendarApi->data)) {
+            $webhook_data = $gCalendarService->getWebhookChanel($calendar->gcalendarId);
+
+            if (isset($webhook_data['id'])) {
+                $calendarApi->data = $webhook_data;
+                $calendarApi->chanelId = $webhook_data['id'];
+                $calendarApi->expires_at = isset($webhook_data['expiration']) ? Carbon::createFromTimestampMs($webhook_data['expiration']) : null;
+                $calendarApi->resourceId = $webhook_data['resourceId'] ?? null;
+                $calendarApi->resourceUri = $webhook_data['resourceUri'] ?? null;
+                $calendarApi->last_webhook_at = Carbon::now();
+            }
+            $calendarApi->save();
+        }
+
+        return $calendarApi;
     }
 }
